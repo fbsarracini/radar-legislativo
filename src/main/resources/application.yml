@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: radar-legislativo
+  data:
+    web:
+      pageable:
+        page-parameter: pagina
+        size-parameter: tamanho
+        max-page-size: 100
+        serialization-mode: via-dto
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Actuator — só expõe /actuator/health
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+radar:
+  http:
+    connect-timeout: 10s
+    read-timeout: 60s
+    user-agent: radar-legislativo/0.1
+
+  cors:
+    origens: [http://localhost:5173, http://localhost:4200, http://localhost:3000]
+
+  camara:
+    base-url: https://dadosabertos.camara.leg.br/api/v2
+    # 57 = 2023-2027 (atual); 58 = 2027-2031 (eleitos em 2026, posse em fev/2027)
+    legislaturas: [57, 58]
+    max-paginas: 10
+
+  senado:
+    base-url: https://legis.senado.leg.br/dadosabertos
+    parametro-autor: codigoParlamentarAutor
+    legislaturas: [58]
+
+  # Casas estaduais/municipais que usam SAPL. Confirme a URL de cada uma
+  # (normalmente https://sapl.<cidade>.<uf>.leg.br) e se a API está aberta.
+  # Cada casa entra em toda busca sem fonte: não deixe URLs fictícias aqui.
+  sapl: []
+  #  - slug: campinas
+  #    nome: Câmara Municipal de Campinas
+  #    esfera: CAMARA_MUNICIPAL
+  #    uf: SP
+  #    municipio: CAMPINAS
+  #    base-url: https://sapl.campinas.sp.leg.br
+
+  tse:
+    url-template: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_{ano}.zip
+    diretorio-cache: ./dados/tse

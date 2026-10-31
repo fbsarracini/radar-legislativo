@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest
+@SpringBootTest(properties = "radar.coleta.habilitada=false")
 @Import(PostgresTestcontainer.class)
 @Testcontainers(disabledWithoutDocker = true)
 class ApplicationTests {

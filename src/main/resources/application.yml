@@ -49,6 +49,8 @@ radar:
     # 57 = 2023-2027 (atual); 58 = 2027-2031 (eleitos em 2026, posse em fev/2027)
     legislaturas: [57, 58]
     max-paginas: 10
+    # Tipos acompanhados pela coleta: projeto de lei, de lei complementar, PEC e projeto de decreto legislativo.
+    tipos: [PL, PLP, PEC, PDL]
 
   senado:
     base-url: https://legis.senado.leg.br/dadosabertos
@@ -69,3 +71,8 @@ radar:
   tse:
     url-template: https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_{ano}.zip
     diretorio-cache: ./dados/tse
+
+  coleta:
+    habilitada: true
+    cron: "0 0 * * * *"   # de hora em hora
+    dias-iniciais: 30

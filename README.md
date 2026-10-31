@@ -33,6 +33,11 @@ make test             # os testes de banco usam Testcontainers e são pulados se
    curl "localhost:8080/api/parlamentares?nome=amaral&uf=SP&fonte=camara"
    curl "localhost:8080/api/fontes/camara/parlamentares/{id}/proposicoes?ano=2025"
    ```
+4. Coleta do que foi protocolado (roda sozinha de hora em hora; `radar.coleta.*` no `application.yml`):
+   ```bash
+   curl -X POST localhost:8080/api/admin/coletas/camara   # força uma coleta agora
+   curl localhost:8080/api/admin/coletas                  # últimas 20 coletas: janela, status, novas/existentes
+   ```
 
 Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso não encontrado","errors":[]}`.
 400 = parâmetro inválido, 404 = candidato/fonte inexistente, 422 = regra de domínio, 502 = API pública fora do ar.
@@ -55,7 +60,9 @@ Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso n
 - **Senado:** o serviço antigo `/senador/{codigo}/autorias` foi descontinuado e substituído por `/processo`. Confira o nome do parâmetro de autoria no Swagger do Senado e ajuste `radar.senado.parametro-autor` se necessário.
 - **Câmara:** sem filtro de data, `/proposicoes` devolve só os últimos 30 dias — o cliente já trata isso.
 - **Volume:** ano municipal tem ~450 mil candidatos. A importação grava em lote (upsert JDBC) numa transação, mas ainda é síncrona e carrega o arquivo inteiro em memória.
-- Vínculos e proposições ainda são consultados nas casas a cada request (com cache de 6h). Próximo passo: coleta agendada das proposições para o banco e o feed `/api/proposicoes`.
+- **Coleta:** só a Câmara implementa `FonteComColeta` por enquanto, e só os tipos de `radar.camara.tipos` (PL, PLP, PEC, PDL). A primeira coleta volta `dias-iniciais` dias; as seguintes recomeçam um dia antes do fim da última com SUCESSO, então uma falha não deixa buraco. Partido/UF do autor é o do momento em que ele apareceu pela primeira vez.
+- O lock da coleta é por instância; rodando mais de uma instância, troque por lock no banco (ex.: ShedLock).
+- Vínculos candidato ↔ parlamentar e as proposições do perfil ainda são consultados nas casas a cada request (cache de 6h). Próximo passo: o feed `/api/proposicoes` lendo do banco.
 
 ## Design de código
 
@@ -72,7 +79,7 @@ Segue o mesmo design do [poc-design-codigo-java](https://github.com/fbsarracini/
 br.com.radarlegislativo
 ├── UseCase, Application
 ├── fonte/      casas legislativas
-│               Esfera, Parlamentar, Proposicao, Nomes, FonteLegislativa, FonteRegistry
+│               Esfera, Parlamentar, Proposicao, Autor, Nomes, FonteLegislativa, FonteComColeta, FonteRegistry
 │               CamaraClient, SenadoClient, SaplClient, Json
 │               ListarFontes, BuscarParlamentares (cache), ListarProposicoesDoParlamentar (cache)
 │               + *Controller e *Response de cada um
@@ -83,6 +90,10 @@ br.com.radarlegislativo
 │               ImportarCandidatos, ListarCandidatos, BuscarVinculosDoCandidato,
 │               ListarProposicoesDoCandidato, ConsultarPerfilDoCandidato
 │               + *Controller, *Request/*Data e *Response
+├── proposicao/ coleta agendada do que é protocolado nas casas
+│               ProposicaoColetada, Autoria, ParlamentarColetado, Coleta (@Entity) + repositórios
+│               ColetarProposicoes, GravadorDeProposicoes (uma transação por escrita), AgendadorDeColetas
+│               ListarColetas + *Controller e *Response
 ├── config/     RadarProperties (validado no boot), HttpConfig, CacheConfig, CorsConfig, OpenApiConfig
 ├── exception/  ApiError, GlobalExceptionHandler, NotFoundException, FonteIndisponivelException
 └── log/        AppLog

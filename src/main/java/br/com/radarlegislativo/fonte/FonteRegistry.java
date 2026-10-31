@@ -31,6 +31,20 @@ public class FonteRegistry {
         return List.copyOf(fontes.values());
     }
 
+    /** Casas cuja API permite a coleta por período. */
+    public List<FonteComColeta> comColeta() {
+        return fontes.values().stream()
+                .filter(FonteComColeta.class::isInstance)
+                .map(FonteComColeta.class::cast)
+                .toList();
+    }
+
+    /** A casa existe mas não permite coleta (ex.: Senado, por enquanto) também é 404. */
+    public FonteComColeta comColeta(String codigo) {
+        if (porCodigo(codigo) instanceof FonteComColeta f) return f;
+        throw new NotFoundException();
+    }
+
     public FonteLegislativa porCodigo(String codigo) {
         return Optional.ofNullable(fontes.get(codigo))
                 .orElseThrow(NotFoundException::new);

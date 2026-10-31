@@ -2,6 +2,7 @@ package br.com.radarlegislativo;
 
 import br.com.radarlegislativo.config.RadarProperties;
 import br.com.radarlegislativo.candidato.Candidato;
+import br.com.radarlegislativo.fonte.Autor;
 import br.com.radarlegislativo.fonte.Esfera;
 import br.com.radarlegislativo.fonte.Parlamentar;
 import br.com.radarlegislativo.fonte.Proposicao;
@@ -17,10 +18,11 @@ public final class TestFixtures {
         return new RadarProperties(
                 new RadarProperties.Http(Duration.ofSeconds(5), Duration.ofSeconds(5), "teste"),
                 new RadarProperties.Cors(List.of("http://localhost:5173")),
-                new RadarProperties.Camara("https://camara.test/api/v2", List.of(57), 3),
+                new RadarProperties.Camara("https://camara.test/api/v2", List.of(57), 3, List.of("PL", "PEC")),
                 new RadarProperties.Senado("https://senado.test/dadosabertos", "codigoParlamentarAutor", List.of()),
                 List.of(),
-                new RadarProperties.Tse("https://tse.test/consulta_cand_{ano}.zip", diretorioTse));
+                new RadarProperties.Tse("https://tse.test/consulta_cand_{ano}.zip", diretorioTse),
+                new RadarProperties.Coleta(false, "0 0 * * * *", 30));
     }
 
     public static Candidato deputadoFederal(String sq, String nome, String urna) {
@@ -37,6 +39,10 @@ public final class TestFixtures {
 
     public static Parlamentar deputado(String id, String nome) {
         return new Parlamentar("camara", id, Esfera.CAMARA_FEDERAL, "Câmara dos Deputados", nome, "XYZ", "SP", null);
+    }
+
+    public static Autor autorDeputado(String id, String nome) {
+        return new Autor(nome, "Deputado(a)", id, true);
     }
 
     public static Proposicao proposicao(String id, String sigla, Integer numero, Integer ano) {

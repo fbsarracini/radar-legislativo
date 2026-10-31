@@ -20,7 +20,8 @@ public record RadarProperties(
         @NotNull @Valid Camara camara,
         @NotNull @Valid Senado senado,
         @NotNull List<@Valid CasaSapl> sapl,
-        @NotNull @Valid Tse tse) {
+        @NotNull @Valid Tse tse,
+        @NotNull @Valid Coleta coleta) {
 
     public record Http(@NotNull Duration connectTimeout, @NotNull Duration readTimeout, @NotBlank String userAgent) {}
 
@@ -30,8 +31,10 @@ public record RadarProperties(
     /**
      * @param legislaturas legislaturas consultadas ao buscar deputados (57 = 2023-2027, 58 = 2027-2031)
      * @param maxPaginas   limite de páginas de 100 itens por consulta de proposições
+     * @param tipos        siglas coletadas pela coleta agendada (PL, PEC...); a Câmara tem dezenas de tipos acessórios
      */
-    public record Camara(@NotBlank String baseUrl, @NotEmpty List<Integer> legislaturas, @Positive int maxPaginas) {}
+    public record Camara(@NotBlank String baseUrl, @NotEmpty List<Integer> legislaturas, @Positive int maxPaginas,
+                         @NotEmpty List<String> tipos) {}
 
     /**
      * @param parametroAutor nome do parâmetro de autoria do serviço /processo
@@ -53,4 +56,11 @@ public record RadarProperties(
      *                       de arquivo local só leem daqui
      */
     public record Tse(@NotBlank String urlTemplate, @NotBlank String diretorioCache) {}
+
+    /**
+     * @param habilitada   liga o agendamento; a coleta manual em /api/admin/coletas funciona mesmo desligada
+     * @param cron         quando rodar (formato do Spring: segundo minuto hora dia mês dia-da-semana)
+     * @param diasIniciais na primeira coleta de uma casa, quantos dias para trás buscar
+     */
+    public record Coleta(boolean habilitada, @NotBlank String cron, @Positive int diasIniciais) {}
 }

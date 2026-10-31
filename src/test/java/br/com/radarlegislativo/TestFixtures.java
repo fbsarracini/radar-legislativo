@@ -19,7 +19,7 @@ public final class TestFixtures {
                 new RadarProperties.Http(Duration.ofSeconds(5), Duration.ofSeconds(5), "teste"),
                 new RadarProperties.Cors(List.of("http://localhost:5173")),
                 new RadarProperties.Camara("https://camara.test/api/v2", List.of(57), 3, List.of("PL", "PEC")),
-                new RadarProperties.Senado("https://senado.test/dadosabertos", "codigoParlamentarAutor", List.of()),
+                new RadarProperties.Senado("https://senado.test/dadosabertos", "codigoParlamentarAutor", List.of(), List.of("PL", "PEC")),
                 List.of(),
                 new RadarProperties.Tse("https://tse.test/consulta_cand_{ano}.zip", diretorioTse),
                 new RadarProperties.Coleta(false, "0 0 * * * *", 30));

@@ -40,8 +40,10 @@ public record RadarProperties(
      * @param parametroAutor nome do parâmetro de autoria do serviço /processo
      *                       (configurável porque o Senado reformulou a API em 2025)
      * @param legislaturas   legislaturas extras além de /senador/lista/atual
+     * @param tipos          siglas coletadas pela coleta agendada (PL, PEC...)
      */
-    public record Senado(@NotBlank String baseUrl, @NotBlank String parametroAutor, @NotNull List<Integer> legislaturas) {}
+    public record Senado(@NotBlank String baseUrl, @NotBlank String parametroAutor, @NotNull List<Integer> legislaturas,
+                         @NotEmpty List<String> tipos) {}
 
     /**
      * Casa legislativa que usa o SAPL (Interlegis) — muitas câmaras municipais e

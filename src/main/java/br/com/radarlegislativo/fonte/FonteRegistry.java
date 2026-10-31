@@ -39,7 +39,7 @@ public class FonteRegistry {
                 .toList();
     }
 
-    /** A casa existe mas não permite coleta (ex.: Senado, por enquanto) também é 404. */
+    /** A casa existe mas não permite coleta (ex.: as do SAPL, por enquanto) também é 404. */
     public FonteComColeta comColeta(String codigo) {
         if (porCodigo(codigo) instanceof FonteComColeta f) return f;
         throw new NotFoundException();

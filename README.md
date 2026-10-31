@@ -39,7 +39,7 @@ make test             # os testes de banco usam Testcontainers e são pulados se
    ```
 4. Coleta do que foi protocolado (roda sozinha de hora em hora; `radar.coleta.*` no `application.yml`):
    ```bash
-   curl -X POST localhost:8080/api/admin/coletas/camara   # força uma coleta agora
+   curl -X POST localhost:8080/api/admin/coletas/camara   # força uma coleta agora (ou /senado)
    curl localhost:8080/api/admin/coletas                  # últimas 20 coletas: janela, status, novas/existentes
    ```
 5. Feed do que foi protocolado (lê do banco; mais recente primeiro):
@@ -70,11 +70,11 @@ Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso n
 - **Eleitos de 2026 tomam posse em 1º/02/2027.** Até lá, só os **reeleitos** (ou quem já teve outro mandato) têm projetos. Por isso a Câmara é consultada nas legislaturas 57 e 58.
 - **Cargos executivos** (presidente, governador, prefeito) não aparecem como autores parlamentares; o vínculo devolve lista vazia.
 - **O casamento TSE ↔ casa é por nome + UF + cargo**, feito no banco entre os parlamentares coletados e os candidatos importados, com grau de confiança (`NOME_URNA_EXATO`, `NOME_CIVIL_EXATO`, `NOME_PARCIAL`). Por eleição, só o grau mais alto encontrado vira sugestão; parcial com mais de 3 candidatos é descartado como ambíguo. Roda quando a coleta grava um parlamentar novo e depois de cada importação. Homônimos acontecem: mostre a confiança e o status na tela e use a confirmação manual.
-- **Perfil do candidato só tem o que foi coletado:** projetos anteriores à primeira coleta (`dias-iniciais`) e casas sem coleta (Senado, SAPL) não aparecem. Para histórico, aumente `dias-iniciais` antes da primeira coleta. Parlamentar que não protocolou nada na janela coletada não tem vínculo.
-- **Senado:** o serviço antigo `/senador/{codigo}/autorias` foi descontinuado e substituído por `/processo`. Confira o nome do parâmetro de autoria no Swagger do Senado e ajuste `radar.senado.parametro-autor` se necessário.
+- **Perfil do candidato só tem o que foi coletado:** projetos anteriores à primeira coleta (`dias-iniciais`) e casas sem coleta (SAPL) não aparecem. Para histórico, aumente `dias-iniciais` antes da primeira coleta. Parlamentar que não protocolou nada na janela coletada não tem vínculo.
+- **Senado:** o serviço antigo `/senador/{codigo}/autorias` foi descontinuado e substituído por `/processo` (Swagger: `/dadosabertos/v3/api-docs`). `/processo` filtra por data de apresentação até 1 ano por consulta, sem paginação — janelas maiores são quebradas pelo cliente. Os autores com código de parlamentar só vêm no detalhe `/processo/{id}`.
 - **Câmara:** sem filtro de data, `/proposicoes` devolve só os últimos 30 dias — o cliente já trata isso.
 - **Volume:** ano municipal tem ~450 mil candidatos. A importação grava em lote (upsert JDBC) numa transação, mas ainda é síncrona e carrega o arquivo inteiro em memória.
-- **Coleta:** só a Câmara implementa `FonteComColeta` por enquanto, e só os tipos de `radar.camara.tipos` (PL, PLP, PEC, PDL). A primeira coleta volta `dias-iniciais` dias; as seguintes recomeçam um dia antes do fim da última com SUCESSO, então uma falha não deixa buraco. Partido/UF do autor é o do momento em que ele apareceu pela primeira vez.
+- **Coleta:** Câmara e Senado implementam `FonteComColeta` (SAPL ainda não), só com os tipos de `radar.<casa>.tipos` (PL, PLP, PEC, PDL). No Senado entram só os processos que ele iniciou (`objetivo=Iniciadora`): os "Revisora" são projetos que vieram da Câmara e já entram pela coleta dela. A primeira coleta volta `dias-iniciais` dias; as seguintes recomeçam um dia antes do fim da última com SUCESSO, então uma falha não deixa buraco. Partido/UF do autor é o do momento em que ele apareceu pela primeira vez.
 - O lock da coleta é por instância; rodando mais de uma instância, troque por lock no banco (ex.: ShedLock).
 - `/api/parlamentares` e `/api/fontes/{fonte}/parlamentares/{id}/proposicoes` continuam consultando as casas ao vivo (cache de 6h), úteis para histórico fora da janela coletada.
 

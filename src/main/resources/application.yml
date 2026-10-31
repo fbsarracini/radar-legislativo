@@ -56,6 +56,7 @@ radar:
     base-url: https://legis.senado.leg.br/dadosabertos
     parametro-autor: codigoParlamentarAutor
     legislaturas: [58]
+    tipos: [PL, PLP, PEC, PDL]
 
   # Casas estaduais/municipais que usam SAPL. Confirme a URL de cada uma
   # (normalmente https://sapl.<cidade>.<uf>.leg.br) e se a API está aberta.

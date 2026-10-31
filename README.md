@@ -40,7 +40,7 @@ make test             # os testes de banco usam Testcontainers e são pulados se
 4. Coleta do que foi protocolado (roda sozinha de hora em hora; `radar.coleta.*` no `application.yml`):
    ```bash
    curl -X POST localhost:8080/api/admin/coletas/camara   # força uma coleta agora (ou /senado)
-   curl localhost:8080/api/admin/coletas                  # últimas 20 coletas: janela, status, novas/existentes
+   curl localhost:8080/api/admin/coletas                  # últimas 20 coletas: janela, status, novas/existentes/pendentes
    ```
 5. Feed do que foi protocolado (lê do banco; mais recente primeiro):
    ```bash
@@ -75,6 +75,7 @@ Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso n
 - **Câmara:** sem filtro de data, `/proposicoes` devolve só os últimos 30 dias — o cliente já trata isso.
 - **Volume:** ano municipal tem ~450 mil candidatos. A importação grava em lote (upsert JDBC) numa transação, mas ainda é síncrona e carrega o arquivo inteiro em memória.
 - **Coleta:** Câmara e Senado implementam `FonteComColeta` (SAPL ainda não), só com os tipos de `radar.<casa>.tipos` (PL, PLP, PEC, PDL). No Senado entram só os processos que ele iniciou (`objetivo=Iniciadora`): os "Revisora" são projetos que vieram da Câmara e já entram pela coleta dela. A primeira coleta volta `dias-iniciais` dias; as seguintes recomeçam um dia antes do fim da última com SUCESSO, então uma falha não deixa buraco. Partido/UF do autor é o do momento em que ele apareceu pela primeira vez.
+- **APIs instáveis:** a Câmara devolve `504` em 25–50% dos requests, em rajadas de minutos. Todo GET às casas tem retry (`radar.http.tentativas`, espera dobrando até `espera-maxima-entre-tentativas`) para 5xx, 429 e timeout. Se ainda assim uma proposição falhar, ela fica **pendente** e a coleta segue; com pendências a coleta termina como FALHA e a próxima (de hora em hora) repete a janela pedindo só o que falta. Três pendências seguidas = casa fora do ar, a coleta para.
 - O lock da coleta é por instância; rodando mais de uma instância, troque por lock no banco (ex.: ShedLock).
 - `/api/parlamentares` e `/api/fontes/{fonte}/parlamentares/{id}/proposicoes` continuam consultando as casas ao vivo (cache de 6h), úteis para histórico fora da janela coletada.
 

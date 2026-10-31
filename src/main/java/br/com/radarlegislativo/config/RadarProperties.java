@@ -23,7 +23,13 @@ public record RadarProperties(
         @NotNull @Valid Tse tse,
         @NotNull @Valid Coleta coleta) {
 
-    public record Http(@NotNull Duration connectTimeout, @NotNull Duration readTimeout, @NotBlank String userAgent) {}
+    /**
+     * @param tentativas             total de tentativas por request (1 = sem retry) em 5xx, 429 e falha de rede
+     * @param esperaEntreTentativas  espera antes da 2ª tentativa; dobra a cada nova, até {@code esperaMaximaEntreTentativas}
+     */
+    public record Http(@NotNull Duration connectTimeout, @NotNull Duration readTimeout, @NotBlank String userAgent,
+                       @Positive int tentativas, @NotNull Duration esperaEntreTentativas,
+                       @NotNull Duration esperaMaximaEntreTentativas) {}
 
     /** @param origens frontends liberados a chamar /api/** (React, Angular, Vue... em outra porta) */
     public record Cors(@NotEmpty List<String> origens) {}

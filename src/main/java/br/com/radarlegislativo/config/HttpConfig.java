@@ -24,6 +24,8 @@ public class HttpConfig {
 
         return RestClient.builder()
                 .requestFactory(factory)
+                .requestInterceptor(new RetentativaInterceptor(props.http().tentativas(),
+                        props.http().esperaEntreTentativas(), props.http().esperaMaximaEntreTentativas()))
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.USER_AGENT, props.http().userAgent());
     }

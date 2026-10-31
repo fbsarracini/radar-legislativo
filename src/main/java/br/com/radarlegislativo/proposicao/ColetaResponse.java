@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 public record ColetaResponse(Long id, String fonte, LocalDate de, LocalDate ate, Coleta.Status status,
-                             int novas, int existentes, String erro, Instant iniciadaEm, Instant terminadaEm) {
+                             int novas, int existentes, int pendentes, String erro, Instant iniciadaEm, Instant terminadaEm) {
 
     public static ColetaResponse of(Coleta coleta) {
         return new ColetaResponse(
@@ -15,6 +15,7 @@ public record ColetaResponse(Long id, String fonte, LocalDate de, LocalDate ate,
                 coleta.status(),
                 coleta.novas(),
                 coleta.existentes(),
+                coleta.pendentes(),
                 coleta.erro(),
                 coleta.iniciadaEm(),
                 coleta.terminadaEm()

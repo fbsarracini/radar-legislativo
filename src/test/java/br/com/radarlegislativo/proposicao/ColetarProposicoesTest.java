@@ -139,22 +139,53 @@ class ColetarProposicoesTest {
     }
 
     @Test
-    @DisplayName("deve registrar FALHA, guardando o que já gravou, quando a casa cai no meio")
-    void deveRegistrarFalhaQuandoCasaCai() {
+    @DisplayName("deve seguir com as outras quando uma proposição falha, e terminar FALHA com ela pendente")
+    void deveSeguirQuandoUmaProposicaoFalha() {
         semColetaAnterior();
         Proposicao pl1 = proposicao("1", "PL", 1, 2026);
         Proposicao pl2 = proposicao("2", "PL", 2, 2026);
         when(camara.proposicoesApresentadasEntre(any(), any())).thenReturn(List.of(pl1, pl2));
         when(gravador.atualizarSeExistir(any(), eq(AGORA))).thenReturn(false);
-        when(camara.autoresDa("1")).thenReturn(List.of());
-        when(camara.autoresDa("2")).thenThrow(new FonteIndisponivelException("camara", "timeout", null));
+        when(camara.autoresDa("1")).thenThrow(new FonteIndisponivelException("camara", "timeout", null));
+        when(camara.autoresDa("2")).thenReturn(List.of());
 
         Coleta coleta = coletarProposicoes.execute("camara");
 
         assertThat(coleta.status()).isEqualTo(Coleta.Status.FALHA);
-        assertThat(coleta.erro()).isEqualTo("timeout");
+        assertThat(coleta.erro()).contains("1 proposições ficaram para a próxima coleta").contains("timeout");
         assertThat(coleta.novas()).isEqualTo(1);
-        verify(gravador).criar(pl1, List.of(), AGORA);
+        assertThat(coleta.pendentes()).isEqualTo(1);
+        verify(gravador).criar(pl2, List.of(), AGORA);
+    }
+
+    @Test
+    @DisplayName("deve parar depois de falhas seguidas demais (casa fora do ar)")
+    void devePararDepoisDeFalhasSeguidas() {
+        semColetaAnterior();
+        List<Proposicao> pls = List.of(proposicao("1", "PL", 1, 2026), proposicao("2", "PL", 2, 2026),
+                proposicao("3", "PL", 3, 2026), proposicao("4", "PL", 4, 2026));
+        when(camara.proposicoesApresentadasEntre(any(), any())).thenReturn(pls);
+        when(gravador.atualizarSeExistir(any(), eq(AGORA))).thenReturn(false);
+        when(camara.autoresDa(anyString())).thenThrow(new FonteIndisponivelException("camara", "504", null));
+
+        Coleta coleta = coletarProposicoes.execute("camara");
+
+        assertThat(coleta.status()).isEqualTo(Coleta.Status.FALHA);
+        assertThat(coleta.erro()).contains(ColetarProposicoes.MAX_FALHAS_SEGUIDAS + " proposições seguidas falharam");
+        assertThat(coleta.pendentes()).isEqualTo(ColetarProposicoes.MAX_FALHAS_SEGUIDAS);
+        verify(camara, never()).autoresDa("4");
+    }
+
+    @Test
+    @DisplayName("deve registrar FALHA quando a própria listagem falha")
+    void deveRegistrarFalhaQuandoListagemFalha() {
+        semColetaAnterior();
+        when(camara.proposicoesApresentadasEntre(any(), any())).thenThrow(new FonteIndisponivelException("camara", "504", null));
+
+        Coleta coleta = coletarProposicoes.execute("camara");
+
+        assertThat(coleta.status()).isEqualTo(Coleta.Status.FALHA);
+        assertThat(coleta.erro()).isEqualTo("504");
     }
 
     @Test

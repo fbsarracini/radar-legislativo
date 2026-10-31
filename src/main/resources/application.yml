@@ -40,6 +40,11 @@ radar:
     connect-timeout: 10s
     read-timeout: 60s
     user-agent: radar-legislativo/0.1
+    # Retry em 5xx/429/timeout. A Câmara devolve 504 em 25–50% dos requests (falhas independentes),
+    # então muitas tentativas curtas: esperas de 1s, 2s, 4s, 8s, 8s.
+    tentativas: 6
+    espera-entre-tentativas: 1s
+    espera-maxima-entre-tentativas: 8s
 
   cors:
     origens: [http://localhost:5173, http://localhost:4200, http://localhost:3000]

@@ -16,7 +16,7 @@ public final class TestFixtures {
 
     public static RadarProperties props(String diretorioTse) {
         return new RadarProperties(
-                new RadarProperties.Http(Duration.ofSeconds(5), Duration.ofSeconds(5), "teste"),
+                new RadarProperties.Http(Duration.ofSeconds(5), Duration.ofSeconds(5), "teste", 1, Duration.ZERO, Duration.ZERO),
                 new RadarProperties.Cors(List.of("http://localhost:5173")),
                 new RadarProperties.Camara("https://camara.test/api/v2", List.of(57), 3, List.of("PL", "PEC")),
                 new RadarProperties.Senado("https://senado.test/dadosabertos", "codigoParlamentarAutor", List.of(), List.of("PL", "PEC")),

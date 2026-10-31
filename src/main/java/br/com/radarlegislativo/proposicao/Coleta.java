@@ -43,6 +43,9 @@ public class Coleta {
     @Column(name = "existentes", nullable = false)
     private int existentes;
 
+    @Column(name = "pendentes", nullable = false)
+    private int pendentes;
+
     @Column(name = "erro")
     private String erro;
 
@@ -75,6 +78,11 @@ public class Coleta {
         existentes++;
     }
 
+    /** Proposição que falhou e fica para a próxima coleta. */
+    public void contarPendente() {
+        pendentes++;
+    }
+
     public void concluir(Instant agora) {
         Assert.state(status == Status.EM_ANDAMENTO, "a coleta já terminou");
         this.status = Status.SUCESSO;
@@ -95,6 +103,7 @@ public class Coleta {
     public Status status() { return status; }
     public int novas() { return novas; }
     public int existentes() { return existentes; }
+    public int pendentes() { return pendentes; }
     public String erro() { return erro; }
     public Instant iniciadaEm() { return iniciadaEm; }
     public Instant terminadaEm() { return terminadaEm; }

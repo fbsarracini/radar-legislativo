@@ -52,6 +52,14 @@ make test             # os testes de banco usam Testcontainers e são pulados se
    `uf`, `partido`, `autor` e `parlamentar` valem para o mesmo autor: `partido=PT&uf=SP` = "um autor do PT de SP".
    Cada autor traz `candidaturas`: o selo do TSE (ano, cargo, eleito, confiança, status do vínculo).
 
+6. Ou abra o front (Angular), com o backend rodando:
+   ```bash
+   make web        # http://localhost:4200 — o ng serve manda /api para localhost:8080
+   make web-test   # testes do front (Vitest)
+   ```
+   Telas: **Feed** (filtros na URL, marca o que chegou desde a última visita), **detalhe da proposição**,
+   **busca de candidatos** e **perfil do candidato**, onde se confirma ou rejeita o vínculo com o parlamentar.
+
 Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso não encontrado","errors":[]}`.
 400 = parâmetro inválido, 404 = candidato/fonte inexistente, 422 = regra de domínio, 502 = API pública fora do ar.
 
@@ -89,6 +97,10 @@ Segue o mesmo design do [poc-design-codigo-java](https://github.com/fbsarracini/
 - **Request implementa uma interface `XxxData`**, então o caso de uso não conhece o transporte HTTP.
 - **Invariantes no domínio** com `Assert` (vira `IllegalArgumentException` → 422 na borda).
 - **Exceções traduzidas na borda** por `GlobalExceptionHandler`; logs estruturados com `AppLog` (`who | what | where | why`).
+
+O front (`web/`, Angular 22 + Angular Material) segue a mesma ideia: pasta por feature (`proposicoes/`, `candidatos/`),
+`core/` com os tipos que espelham os `*Response` e o único ponto que monta URL da API (`RadarApi`), leituras com
+`httpResource` dirigidas pelos query params da rota e componentes standalone com signals.
 
 ```
 br.com.radarlegislativo

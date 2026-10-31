@@ -1,0 +1,65 @@
+<a class="voltar" routerLink="/proposicoes">← Feed</a>
+
+<app-estado-da-carga
+  [carregando]="proposicao.isLoading()"
+  [erro]="!!proposicao.error()"
+  [mensagemDeErro]="proposicao.error() ? 'Proposição não encontrada.' : ''"
+  (tentarDeNovo)="proposicao.reload()"
+/>
+
+@if (proposicao.hasValue()) {
+  @let p = proposicao.value();
+  <h1>{{ p.identificacao }}</h1>
+  <p class="subtitulo">
+    {{ p.casa }}
+    @if (p.dataApresentacao) {
+      · apresentada em {{ p.dataApresentacao | date: 'dd/MM/yyyy' }}
+    }
+    · coletada em {{ p.primeiraVezVistaEm | date: "dd/MM/yyyy 'às' HH:mm" }}
+  </p>
+
+  <section>
+    <h2>Ementa</h2>
+    <p class="ementa">{{ p.ementa || 'Sem ementa.' }}</p>
+    @if (p.url) {
+      <a mat-stroked-button [href]="p.url" target="_blank" rel="noopener">
+        <mat-icon>open_in_new</mat-icon>
+        Ver no site da casa
+      </a>
+    }
+  </section>
+
+  <section>
+    <h2>Autores ({{ p.autores.length }})</h2>
+    <ul class="autores">
+      @for (a of p.autores; track a.ordem) {
+        <li>
+          <div class="autor">
+            <span class="nome">{{ a.nome }}</span>
+            @if (a.parlamentar; as parl) {
+              @if (siglas(parl.partido, parl.uf); as s) {
+                <span class="partido">{{ s }}</span>
+              }
+            } @else if (a.tipo) {
+              <span class="partido">{{ a.tipo }}</span>
+            }
+            @if (a.proponente) {
+              <span class="proponente">proponente</span>
+            }
+          </div>
+          @if (a.candidaturas.length) {
+            <div class="selos">
+              @for (c of a.candidaturas; track c.vinculo) {
+                <app-selo-candidatura [candidatura]="c" />
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+    <p class="nota">
+      Selo tracejado com <b>?</b> é sugestão pelo nome e pode ser homônimo: abra o candidato para
+      confirmar ou rejeitar.
+    </p>
+  </section>
+}

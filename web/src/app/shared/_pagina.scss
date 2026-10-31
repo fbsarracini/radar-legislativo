@@ -1,0 +1,59 @@
+// Layout comum das telas: título, filtros em grade, lista de cards.
+
+@mixin conteudo {
+  display: block;
+
+  h1 {
+    font: var(--mat-sys-headline-small);
+    margin: 0 0 4px;
+  }
+
+  .subtitulo {
+    margin: 0 0 24px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .total {
+    margin: 8px 0;
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .lista {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+}
+
+@mixin filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0 12px;
+  margin-bottom: 8px;
+
+  .largo {
+    grid-column: span 2;
+  }
+
+  .acoes {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .espaco {
+    flex: 1;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr 1fr;
+
+    .largo {
+      grid-column: 1 / -1;
+    }
+  }
+}

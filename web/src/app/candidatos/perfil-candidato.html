@@ -1,0 +1,123 @@
+<a class="voltar" routerLink="/candidatos">← Candidatos</a>
+
+<app-estado-da-carga
+  [carregando]="perfil.isLoading() && !perfil.hasValue()"
+  [erro]="!!perfil.error()"
+  mensagemDeErro="Candidato não encontrado."
+  (tentarDeNovo)="perfil.reload()"
+/>
+
+@if (perfil.hasValue()) {
+  @let c = perfil.value().candidato;
+  <header class="cabecalho">
+    <h1>{{ c.nomeUrna }}</h1>
+    <p class="subtitulo">
+      {{ c.nome }} · {{ capitalizar(c.cargo) }} {{ c.uf }}
+      @if (c.municipio) {
+        ({{ nomeProprio(c.municipio) }})
+      }
+      · {{ c.partido }} {{ c.numero }} · eleição de {{ c.anoEleicao }}
+    </p>
+    <span class="resultado" [class.eleito]="c.eleito">{{
+      capitalizar(c.situacao) || 'Sem resultado'
+    }}</span>
+  </header>
+
+  <section>
+    <h2>Quem é na casa legislativa</h2>
+    @if (perfil.value().vinculos.length) {
+      <p class="nota">
+        O cruzamento com o TSE é por nome, UF e cargo. Confirme quem é a mesma pessoa e rejeite os
+        homônimos: o recálculo automático nunca desfaz a sua decisão.
+      </p>
+      <ul class="vinculos">
+        @for (v of perfil.value().vinculos; track v.id) {
+          <li [class]="'vinculo ' + v.status.toLowerCase()">
+            @if (v.parlamentar.fotoUrl) {
+              <img [src]="v.parlamentar.fotoUrl" alt="" width="56" height="56" loading="lazy" />
+            } @else {
+              <div class="sem-foto" aria-hidden="true">{{ v.parlamentar.nome.charAt(0) }}</div>
+            }
+            <div class="dados">
+              <span class="nome">{{ v.parlamentar.nome }}</span>
+              <span class="secundario">
+                {{ partidoUf(v.parlamentar.partido, v.parlamentar.uf) }} ·
+                {{ nomeDaCasa(v.parlamentar.fonte) }}
+              </span>
+              <span class="secundario">
+                <b>{{ statusVinculo[v.status] }}</b> · {{ confianca[v.confianca] }}
+              </span>
+            </div>
+            <div class="botoes">
+              @if (v.status !== 'CONFIRMADO') {
+                <button
+                  mat-flat-button
+                  type="button"
+                  [disabled]="decidindo() === v.id"
+                  (click)="decidir(v, true)"
+                >
+                  É esta pessoa
+                </button>
+              }
+              @if (v.status !== 'REJEITADO') {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="decidindo() === v.id"
+                  (click)="decidir(v, false)"
+                >
+                  Homônimo
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="nota">
+        Nenhum parlamentar coletado com esse nome, UF e cargo. Cargos executivos não têm projetos, e
+        quem não protocolou nada na janela coletada ainda não aparece.
+      </p>
+    }
+  </section>
+
+  <section>
+    <h2>
+      Projetos
+      @if (proposicoes.hasValue()) {
+        ({{ proposicoes.value().page.totalElements }})
+      }
+    </h2>
+    @if (perfil.value().vinculos.length && !temConfirmado()) {
+      <p class="nota">
+        Ainda sem vínculo confirmado: os projetos abaixo vêm das sugestões de maior confiança.
+      </p>
+    }
+
+    @let pagina = proposicoes.hasValue() ? proposicoes.value() : undefined;
+    <app-estado-da-carga
+      [carregando]="proposicoes.isLoading()"
+      [erro]="!!proposicoes.error()"
+      [vazio]="pagina?.content?.length === 0"
+      mensagemVazio="Nenhum projeto coletado deste candidato."
+      (tentarDeNovo)="proposicoes.reload()"
+    />
+    @if (pagina && pagina.content.length) {
+      <div class="lista">
+        @for (p of pagina.content; track p.id) {
+          <app-proposicao-card [proposicao]="p" />
+        }
+      </div>
+      @if (pagina.page.totalPages > 1) {
+        <mat-paginator
+          [length]="pagina.page.totalElements"
+          [pageIndex]="pagina.page.number"
+          [pageSize]="pagina.page.size"
+          [hidePageSize]="true"
+          (page)="mudarPagina($event)"
+          aria-label="Páginas de projetos"
+        />
+      }
+    }
+  </section>
+}

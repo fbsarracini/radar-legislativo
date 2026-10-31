@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help build run test clean swagger db db-down
+.PHONY: help build run test clean swagger db db-down web web-test web-build
 
 # Variáveis do .env (DB_PASSWORD etc.) viram variáveis de ambiente da app.
 -include .env
@@ -30,3 +30,16 @@ clean: ## Limpa artefatos de build
 
 swagger: ## Abre o Swagger UI no navegador
 	@xdg-open http://localhost:8080/swagger-ui.html >/dev/null 2>&1 || echo "Abra: http://localhost:8080/swagger-ui.html"
+
+web/node_modules: web/package-lock.json
+	cd web && npm ci
+	@touch web/node_modules
+
+web: web/node_modules ## Roda o front Angular em http://localhost:4200 (proxy de /api para :8080)
+	cd web && npx ng serve
+
+web-test: web/node_modules ## Roda os testes do front (Vitest)
+	cd web && npx ng test --watch=false
+
+web-build: web/node_modules ## Gera o build de produção do front em web/dist
+	cd web && npx ng build

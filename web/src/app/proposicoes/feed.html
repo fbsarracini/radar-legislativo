@@ -1,0 +1,90 @@
+<h1>O que foi protocolado</h1>
+<p class="subtitulo">
+  Projetos coletados da Câmara e do Senado, mais recentes primeiro.
+  @if (ultimaVisita) {
+    Sua última visita foi em {{ ultimaVisita | date: "dd/MM/yyyy 'às' HH:mm" }}.
+  }
+</p>
+
+<form class="filtros" [formGroup]="filtros" (ngSubmit)="aplicar()">
+  <mat-form-field>
+    <mat-label>Desde</mat-label>
+    <input matInput type="date" formControlName="desde" />
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Até</mat-label>
+    <input matInput type="date" formControlName="ate" />
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Casa</mat-label>
+    <mat-select formControlName="fonte">
+      <mat-option value="">Todas</mat-option>
+      @for (f of fontes.value(); track f.codigo) {
+        <mat-option [value]="f.codigo">{{ f.casa }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Tipo</mat-label>
+    <mat-select formControlName="tipo" multiple>
+      @for (t of tipos; track t.sigla) {
+        <mat-option [value]="t.sigla">{{ t.sigla }} · {{ t.nome }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>UF do autor</mat-label>
+    <mat-select formControlName="uf">
+      <mat-option value="">Todas</mat-option>
+      @for (uf of ufs; track uf) {
+        <mat-option [value]="uf">{{ uf }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Partido do autor</mat-label>
+    <input matInput formControlName="partido" placeholder="PT, PL, MDB…" />
+  </mat-form-field>
+  <mat-form-field class="largo">
+    <mat-label>Nome do autor</mat-label>
+    <input matInput formControlName="autor" placeholder="sem acento também serve" />
+  </mat-form-field>
+
+  <div class="acoes">
+    @if (ultimaVisita) {
+      <mat-checkbox formControlName="novas">Só o que chegou desde a última visita</mat-checkbox>
+    }
+    <span class="espaco"></span>
+    <button mat-button type="button" (click)="limpar()">Limpar</button>
+    <button mat-flat-button type="submit">Filtrar</button>
+  </div>
+</form>
+
+@let pagina = feed.hasValue() ? feed.value() : undefined;
+
+<app-estado-da-carga
+  [carregando]="feed.isLoading()"
+  [erro]="!!feed.error()"
+  [vazio]="pagina?.content?.length === 0"
+  mensagemVazio="Nenhuma proposição com esses filtros. A coleta roda de hora em hora."
+  (tentarDeNovo)="feed.reload()"
+/>
+
+@if (pagina && pagina.content.length) {
+  <p class="total" aria-live="polite">
+    {{ contagem(pagina.page.totalElements, 'proposição', 'proposições') }}
+  </p>
+  <div class="lista">
+    @for (p of pagina.content; track p.id) {
+      <app-proposicao-card [proposicao]="p" [ultimaVisita]="ultimaVisita" />
+    }
+  </div>
+  <mat-paginator
+    [length]="pagina.page.totalElements"
+    [pageIndex]="pagina.page.number"
+    [pageSize]="pagina.page.size"
+    [pageSizeOptions]="[10, 20, 50, 100]"
+    (page)="mudarPagina($event)"
+    aria-label="Páginas do feed"
+  />
+}

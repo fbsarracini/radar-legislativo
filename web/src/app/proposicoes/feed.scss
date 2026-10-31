@@ -1,0 +1,9 @@
+@use '../shared/pagina';
+
+:host {
+  @include pagina.conteudo;
+}
+
+.filtros {
+  @include pagina.filtros;
+}

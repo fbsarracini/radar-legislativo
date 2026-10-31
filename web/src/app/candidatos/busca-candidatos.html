@@ -1,0 +1,112 @@
+<h1>Candidatos</h1>
+<p class="subtitulo">
+  Candidatos importados do TSE, eleitos ou não. Abra um para ver os projetos e os vínculos com as
+  casas.
+</p>
+
+<form class="filtros" [formGroup]="filtros" (ngSubmit)="aplicar()">
+  <mat-form-field class="largo">
+    <mat-label>Nome</mat-label>
+    <input matInput formControlName="nome" placeholder="nome civil ou de urna" />
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Ano da eleição</mat-label>
+    <input matInput type="number" formControlName="ano" min="1994" step="2" />
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>UF</mat-label>
+    <mat-select formControlName="uf">
+      <mat-option value="">Todas</mat-option>
+      @for (uf of ufs; track uf) {
+        <mat-option [value]="uf">{{ uf }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Cargo</mat-label>
+    <input matInput formControlName="cargo" [matAutocomplete]="cargosAuto" />
+    <mat-autocomplete #cargosAuto="matAutocomplete">
+      @for (c of cargos; track c) {
+        <mat-option [value]="c">{{ c }}</mat-option>
+      }
+    </mat-autocomplete>
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Município</mat-label>
+    <input matInput formControlName="municipio" />
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Resultado</mat-label>
+    <mat-select formControlName="eleito">
+      <mat-option value="">Todos</mat-option>
+      <mat-option value="true">Eleitos</mat-option>
+      <mat-option value="false">Não eleitos</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <div class="acoes">
+    <span class="espaco"></span>
+    <button mat-button type="button" (click)="limpar()">Limpar</button>
+    <button mat-flat-button type="submit">Buscar</button>
+  </div>
+</form>
+
+@let pagina = candidatos.hasValue() ? candidatos.value() : undefined;
+
+<app-estado-da-carga
+  [carregando]="candidatos.isLoading()"
+  [erro]="!!candidatos.error()"
+  [vazio]="pagina?.content?.length === 0"
+  mensagemVazio="Nenhum candidato com esses filtros. Já importou o ano no TSE?"
+  (tentarDeNovo)="candidatos.reload()"
+/>
+
+@if (pagina && pagina.content.length) {
+  <p class="total" aria-live="polite">
+    {{ contagem(pagina.page.totalElements, 'candidato', 'candidatos') }}
+  </p>
+  <div class="tabela">
+    <table mat-table [dataSource]="pagina.content">
+      <ng-container matColumnDef="nome">
+        <th mat-header-cell *matHeaderCellDef>Nome de urna</th>
+        <td mat-cell *matCellDef="let c">
+          <a [routerLink]="['/candidatos', c.sqCandidato]">{{ c.nomeUrna }}</a>
+          <div class="secundario">{{ c.nome }}</div>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="cargo">
+        <th mat-header-cell *matHeaderCellDef>Cargo</th>
+        <td mat-cell *matCellDef="let c">
+          {{ capitalizar(c.cargo) }} {{ c.anoEleicao }}
+          @if (c.municipio) {
+            <div class="secundario">{{ nomeProprio(c.municipio) }}</div>
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="uf">
+        <th mat-header-cell *matHeaderCellDef>UF</th>
+        <td mat-cell *matCellDef="let c">{{ c.uf }}</td>
+      </ng-container>
+      <ng-container matColumnDef="partido">
+        <th mat-header-cell *matHeaderCellDef>Partido</th>
+        <td mat-cell *matCellDef="let c">{{ c.partido }} · {{ c.numero }}</td>
+      </ng-container>
+      <ng-container matColumnDef="situacao">
+        <th mat-header-cell *matHeaderCellDef>Situação</th>
+        <td mat-cell *matCellDef="let c">
+          <span [class.eleito]="c.eleito">{{ capitalizar(c.situacao) || '—' }}</span>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+      <tr mat-row *matRowDef="let row; columns: colunas"></tr>
+    </table>
+  </div>
+  <mat-paginator
+    [length]="pagina.page.totalElements"
+    [pageIndex]="pagina.page.number"
+    [pageSize]="pagina.page.size"
+    [pageSizeOptions]="[10, 20, 50, 100]"
+    (page)="mudarPagina($event)"
+    aria-label="Páginas de candidatos"
+  />
+}

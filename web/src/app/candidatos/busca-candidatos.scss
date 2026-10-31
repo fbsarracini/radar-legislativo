@@ -1,0 +1,40 @@
+@use '../shared/pagina';
+
+:host {
+  @include pagina.conteudo;
+}
+
+.filtros {
+  @include pagina.filtros;
+}
+
+.tabela {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  min-width: 640px;
+}
+
+td a {
+  color: var(--mat-sys-primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+td a:hover {
+  text-decoration: underline;
+}
+
+.secundario {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.eleito {
+  font-weight: 500;
+  color: var(--mat-sys-tertiary);
+}

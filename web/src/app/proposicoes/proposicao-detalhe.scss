@@ -1,0 +1,71 @@
+@use '../shared/pagina';
+
+:host {
+  @include pagina.conteudo;
+}
+
+.voltar {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--mat-sys-primary);
+  text-decoration: none;
+}
+
+section {
+  margin-bottom: 32px;
+}
+
+h2 {
+  font: var(--mat-sys-title-medium);
+  margin: 0 0 8px;
+}
+
+.ementa {
+  font: var(--mat-sys-body-large);
+  margin: 0 0 16px;
+  max-width: 75ch;
+}
+
+.autores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+.autor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nome {
+  font: var(--mat-sys-title-small);
+}
+
+.partido,
+.proponente {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.proponente {
+  font-style: italic;
+}
+
+.selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.nota {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

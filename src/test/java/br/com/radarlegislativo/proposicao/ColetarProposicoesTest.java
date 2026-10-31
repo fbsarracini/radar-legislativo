@@ -1,5 +1,6 @@
 package br.com.radarlegislativo.proposicao;
 
+import br.com.radarlegislativo.candidato.VincularParlamentares;
 import br.com.radarlegislativo.exception.FonteIndisponivelException;
 import br.com.radarlegislativo.exception.NotFoundException;
 import br.com.radarlegislativo.fonte.Autor;
@@ -35,6 +36,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,12 +55,14 @@ class ColetarProposicoesTest {
     private GravadorDeProposicoes gravador;
     @Mock
     private FonteComColeta camara;
+    @Mock
+    private VincularParlamentares vincularParlamentares;
 
     private ColetarProposicoes coletarProposicoes;
 
     @BeforeEach
     void setUp() {
-        coletarProposicoes = new ColetarProposicoes(registry, coletaRepository, gravador, props("x"), RELOGIO);
+        coletarProposicoes = new ColetarProposicoes(registry, coletaRepository, gravador, vincularParlamentares, props("x"), RELOGIO);
         lenient().when(camara.codigo()).thenReturn("camara");
         lenient().when(registry.comColeta("camara")).thenReturn(camara);
         lenient().when(coletaRepository.save(any(Coleta.class))).then(returnsFirstArg());
@@ -107,11 +111,12 @@ class ColetarProposicoesTest {
         when(camara.autoresDa("2648825")).thenReturn(autores);
         when(gravador.parlamentaresDesconhecidos("camara", List.of("1", "2"))).thenReturn(Set.of("2"));
         when(camara.parlamentar("2")).thenReturn(beltrano);
+        when(gravador.registrarParlamentar(beltrano, AGORA)).thenReturn(42L);
 
         Coleta coleta = coletarProposicoes.execute("camara");
 
         verify(camara, never()).parlamentar("1");
-        verify(gravador).registrarParlamentar(beltrano, AGORA);
+        verify(vincularParlamentares).execute(List.of(42L));
         verify(gravador).criar(pl, autores, AGORA);
         assertThat(coleta.novas()).isEqualTo(1);
         assertThat(coleta.existentes()).isZero();
@@ -129,6 +134,7 @@ class ColetarProposicoesTest {
 
         verify(camara, never()).autoresDa(anyString());
         verify(gravador, never()).criar(any(), any(), any());
+        verifyNoInteractions(vincularParlamentares);
         assertThat(coleta.existentes()).isEqualTo(1);
     }
 
@@ -158,5 +164,26 @@ class ColetarProposicoesTest {
 
         assertThatThrownBy(() -> coletarProposicoes.execute("senado")).isInstanceOf(NotFoundException.class);
         verify(coletaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("deve casar os parlamentares novos mesmo quando a coleta falha, e a falha do casamento não derruba a coleta")
+    void deveVincularMesmoComFalha() {
+        semColetaAnterior();
+        Proposicao pl1 = proposicao("1", "PL", 1, 2026);
+        Proposicao pl2 = proposicao("2", "PL", 2, 2026);
+        Parlamentar fulana = deputado("1", "Fulana");
+        when(camara.proposicoesApresentadasEntre(any(), any())).thenReturn(List.of(pl1, pl2));
+        when(camara.autoresDa("1")).thenReturn(List.of(autorDeputado("1", "Fulana")));
+        when(gravador.parlamentaresDesconhecidos("camara", List.of("1"))).thenReturn(Set.of("1"));
+        when(camara.parlamentar("1")).thenReturn(fulana);
+        when(gravador.registrarParlamentar(fulana, AGORA)).thenReturn(7L);
+        when(camara.autoresDa("2")).thenThrow(new FonteIndisponivelException("camara", "timeout", null));
+        when(vincularParlamentares.execute(List.of(7L))).thenThrow(new IllegalStateException("banco"));
+
+        Coleta coleta = coletarProposicoes.execute("camara");
+
+        assertThat(coleta.status()).isEqualTo(Coleta.Status.FALHA);
+        verify(vincularParlamentares).execute(List.of(7L));
     }
 }

@@ -63,8 +63,8 @@ class FeedDeProposicoesTest {
     /** Ids externos de quem passou no filtro, na ordem do feed; restringe à fonte do teste. */
     private List<String> feed(LocalDate desde, LocalDate ate, Instant novasDesde, List<String> tipos,
                               String uf, String partido, String autor, Long parlamentar) {
-        Page<ProposicaoColetada> page = listarProposicoes.execute(
-                new FiltroProposicoes(desde, ate, novasDesde, "feed", tipos, uf, partido, autor, parlamentar), PAGINA);
+        Page<ProposicaoColetada> page = listarProposicoes.execute(new FiltroProposicoes(desde, ate, novasDesde, "feed",
+                tipos, uf, partido, autor, parlamentar == null ? null : List.of(parlamentar)), PAGINA).pagina();
         return page.map(ProposicaoColetada::idExterno).getContent();
     }
 
@@ -88,7 +88,7 @@ class FeedDeProposicoesTest {
 
         assertThat(feed(null, null, null, List.of(), null, null, null, null)).containsExactly("103", "102", "101", "100");
         assertThat(listarProposicoes.execute(new FiltroProposicoes(null, null, null, "feed", null, null, null, null, null),
-                PageRequest.of(1, 3)).getContent()).extracting(ProposicaoColetada::idExterno).containsExactly("100");
+                PageRequest.of(1, 3)).pagina().getContent()).extracting(ProposicaoColetada::idExterno).containsExactly("100");
     }
 
     @Test
@@ -96,7 +96,7 @@ class FeedDeProposicoesTest {
     void deveFiltrarPorPeriodoTipoENovas() {
         assertThat(feed(null, null, null, List.of(), null, null, null, null)).containsExactly("103", "102", "101");
         assertThat(listarProposicoes.execute(new FiltroProposicoes(null, null, null, "feed", null, null, null, null, null),
-                PageRequest.of(0, 2)).getTotalElements()).isEqualTo(3);
+                PageRequest.of(0, 2)).pagina().getTotalElements()).isEqualTo(3);
         assertThat(feed(LocalDate.of(2026, 10, 29), LocalDate.of(2026, 10, 29), null, List.of(), null, null, null, null))
                 .containsExactly("102");
         assertThat(feed(null, null, null, List.of("PL"), null, null, null, null)).containsExactly("103", "101");
@@ -131,10 +131,10 @@ class FeedDeProposicoesTest {
     @DisplayName("deve entregar autores e parlamentares carregados para uso fora da transação")
     void deveCarregarAutoresParaForaDaTransacao() {
         ProposicaoColetada pec = listarProposicoes.execute(
-                new FiltroProposicoes(null, null, null, "feed", List.of("PEC"), null, null, null, null), PAGINA).getContent().getFirst();
+                new FiltroProposicoes(null, null, null, "feed", List.of("PEC"), null, null, null, null), PAGINA).pagina().getContent().getFirst();
 
         assertThat(pec.autores()).extracting(a -> a.parlamentar().partido()).containsExactly("PT", "PL");
-        ProposicaoColetada detalhe = consultarProposicao.execute(pec.id());
+        ProposicaoColetada detalhe = consultarProposicao.execute(pec.id()).proposicao();
         assertThat(detalhe.autores()).extracting(Autoria::nome).containsExactly("Maria do Rosário", "João Paulo");
         assertThat(detalhe.identificacao()).isEqualTo("PEC 102/2026");
     }

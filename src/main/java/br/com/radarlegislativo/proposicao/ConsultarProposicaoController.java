@@ -21,6 +21,7 @@ public class ConsultarProposicaoController {
     @GetMapping("/api/proposicoes/{id}")
     @ResponseStatus(HttpStatus.OK)
     public ProposicaoColetadaResponse execute(@PathVariable @Positive Long id) {
-        return ProposicaoColetadaResponse.of(consultarProposicao.execute(id));
+        ProposicaoComCandidaturas detalhe = consultarProposicao.execute(id);
+        return ProposicaoColetadaResponse.of(detalhe.proposicao(), detalhe.candidaturas());
     }
 }

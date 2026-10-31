@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.springframework.util.Assert;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -96,6 +97,16 @@ public class Candidato {
         return null; // cargos executivos (presidente, governador, prefeito) não protocolam projetos como autores parlamentares
     }
 
+    /** O inverso de {@link #esferaDoMandato()}: os cargos (normalizados) de quem exerce mandato na esfera. */
+    public static List<String> cargosDa(Esfera esfera) {
+        return switch (esfera) {
+            case CAMARA_FEDERAL -> List.of("DEPUTADO FEDERAL");
+            case SENADO_FEDERAL -> List.of("SENADOR");
+            case ASSEMBLEIA_ESTADUAL -> List.of("DEPUTADO ESTADUAL", "DEPUTADO DISTRITAL");
+            case CAMARA_MUNICIPAL -> List.of("VEREADOR");
+        };
+    }
+
     public String sqCandidato() { return sqCandidato; }
     public int anoEleicao() { return anoEleicao; }
     public String nome() { return nome; }
@@ -113,7 +124,8 @@ public class Candidato {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof Candidato c && Objects.equals(sqCandidato, c.sqCandidato);
+        // Accessor, não campo: o outro lado pode ser um proxy lazy do Hibernate, cujos campos ficam nulos.
+        return o instanceof Candidato c && Objects.equals(sqCandidato, c.sqCandidato());
     }
 
     @Override

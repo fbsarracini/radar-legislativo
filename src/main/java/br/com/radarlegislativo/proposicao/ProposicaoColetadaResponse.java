@@ -12,7 +12,7 @@ public record ProposicaoColetadaResponse(Long id, String fonte, String idExterno
                                          String ementa, LocalDate dataApresentacao, String url,
                                          Instant primeiraVezVistaEm, List<AutoriaResponse> autores) {
 
-    public static ProposicaoColetadaResponse of(ProposicaoColetada proposicao) {
+    public static ProposicaoColetadaResponse of(ProposicaoColetada proposicao, Candidaturas candidaturas) {
         return new ProposicaoColetadaResponse(
                 proposicao.id(),
                 proposicao.fonte(),
@@ -27,7 +27,7 @@ public record ProposicaoColetadaResponse(Long id, String fonte, String idExterno
                 proposicao.dataApresentacao(),
                 proposicao.url(),
                 proposicao.primeiraVezVistaEm(),
-                proposicao.autores().stream().map(AutoriaResponse::of).toList()
+                proposicao.autores().stream().map(a -> AutoriaResponse.of(a, candidaturas)).toList()
         );
     }
 }

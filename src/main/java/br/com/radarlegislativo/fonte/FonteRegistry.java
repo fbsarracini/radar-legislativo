@@ -45,6 +45,11 @@ public class FonteRegistry {
         throw new NotFoundException();
     }
 
+    /** Para quem precisa tolerar uma casa que saiu da configuração (ex.: parlamentar gravado antes). */
+    public Optional<FonteLegislativa> encontrar(String codigo) {
+        return Optional.ofNullable(fontes.get(codigo));
+    }
+
     public FonteLegislativa porCodigo(String codigo) {
         return Optional.ofNullable(fontes.get(codigo))
                 .orElseThrow(NotFoundException::new);

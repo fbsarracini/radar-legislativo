@@ -42,11 +42,11 @@ public class ListarProposicoesController {
             @RequestParam(required = false) @Pattern(regexp = "[A-Za-z]{2}") String uf,
             @RequestParam(required = false) String partido,
             @RequestParam(required = false) String autor,
-            @RequestParam(required = false) @Positive Long parlamentar,
+            @RequestParam(required = false) List<@Positive Long> parlamentar,
             @PageableDefault(size = 20) Pageable pageable) {
         FiltroProposicoes filtro = new FiltroProposicoes(desde, ate, novasDesde == null ? null : novasDesde.toInstant(),
                 fonte, tipo, uf, partido, autor, parlamentar);
-        return listarProposicoes.execute(filtro, pageable)
-                .map(ProposicaoColetadaResponse::of);
+        FeedDeProposicoes feed = listarProposicoes.execute(filtro, pageable);
+        return feed.pagina().map(p -> ProposicaoColetadaResponse.of(p, feed.candidaturas()));
     }
 }

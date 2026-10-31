@@ -1,6 +1,7 @@
 package br.com.radarlegislativo.proposicao;
 
 import br.com.radarlegislativo.UseCase;
+import br.com.radarlegislativo.candidato.VincularParlamentares;
 import br.com.radarlegislativo.config.RadarProperties;
 import br.com.radarlegislativo.exception.FonteIndisponivelException;
 import br.com.radarlegislativo.fonte.Autor;
@@ -14,6 +15,7 @@ import org.springframework.util.Assert;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -27,6 +29,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *   <li>Autores e parlamentares só são pedidos à casa para o que ainda não está no banco.</li>
  *   <li>Qualquer falha da casa encerra a coleta como FALHA; a próxima recomeça da última com SUCESSO,
  *       então nenhum dia fica para trás.</li>
+ *   <li>Parlamentares novos são casados com os candidatos do TSE no fim, mesmo se a coleta falhar.</li>
  * </ul>
  * O lock é por instância da app; com mais de uma rodando, troque por um lock no banco.
  */
@@ -38,15 +41,18 @@ public class ColetarProposicoes {
     private final FonteRegistry registry;
     private final ColetaRepository coletaRepository;
     private final GravadorDeProposicoes gravador;
+    private final VincularParlamentares vincularParlamentares;
     private final int diasIniciais;
     private final Clock clock;
     private final Map<String, ReentrantLock> emAndamento = new ConcurrentHashMap<>();
 
     public ColetarProposicoes(FonteRegistry registry, ColetaRepository coletaRepository,
-                              GravadorDeProposicoes gravador, RadarProperties props, Clock clock) {
+                              GravadorDeProposicoes gravador, VincularParlamentares vincularParlamentares,
+                              RadarProperties props, Clock clock) {
         this.registry = registry;
         this.coletaRepository = coletaRepository;
         this.gravador = gravador;
+        this.vincularParlamentares = vincularParlamentares;
         this.diasIniciais = props.coleta().diasIniciais();
         this.clock = clock;
     }
@@ -67,6 +73,7 @@ public class ColetarProposicoes {
         Coleta coleta = coletaRepository.save(new Coleta(fonte.codigo(), inicioDaJanela(fonte.codigo(), ate), ate, clock.instant()));
         String alvo = "fonte=" + fonte.codigo() + " de=" + coleta.de() + " ate=" + coleta.ate();
         AppLog.logger(log).system().does("coletar proposições").on(alvo).debug();
+        List<Long> parlamentaresNovos = new ArrayList<>();
         try {
             for (Proposicao p : fonte.proposicoesApresentadasEntre(coleta.de(), coleta.ate())) {
                 if (gravador.atualizarSeExistir(p, clock.instant())) {
@@ -75,7 +82,7 @@ public class ColetarProposicoes {
                 }
                 List<Autor> autores = fonte.autoresDa(p.id());
                 for (String id : gravador.parlamentaresDesconhecidos(fonte.codigo(), idsDosParlamentares(autores))) {
-                    gravador.registrarParlamentar(fonte.parlamentar(id), clock.instant());
+                    parlamentaresNovos.add(gravador.registrarParlamentar(fonte.parlamentar(id), clock.instant()));
                 }
                 gravador.criar(p, autores, clock.instant());
                 coleta.contarNova();
@@ -90,8 +97,20 @@ public class ColetarProposicoes {
             coleta.falhar(e.getClass().getSimpleName(), clock.instant());
             coletaRepository.save(coleta);
             throw e;
+        } finally {
+            vincular(parlamentaresNovos, alvo);
         }
         return coletaRepository.save(coleta);
+    }
+
+    /** O casamento com o TSE é um extra: se falhar, a coleta continua valendo e o recálculo do admin resolve. */
+    private void vincular(List<Long> parlamentares, String alvo) {
+        if (parlamentares.isEmpty()) return;
+        try {
+            vincularParlamentares.execute(parlamentares);
+        } catch (RuntimeException e) {
+            AppLog.logger(log).system().does("vincular parlamentares da coleta").on(alvo).failed(e.getMessage()).error(e);
+        }
     }
 
     /**

@@ -47,11 +47,12 @@ class GravadorDeProposicoes {
         return desconhecidos;
     }
 
+    /** @return o id interno do parlamentar gravado */
     @Transactional
-    public void registrarParlamentar(Parlamentar parlamentar, Instant agora) {
-        parlamentares.findByFonteAndIdExterno(parlamentar.fonte(), parlamentar.id())
-                .ifPresentOrElse(p -> p.atualizar(parlamentar, agora),
-                        () -> parlamentares.save(new ParlamentarColetado(parlamentar, agora)));
+    public Long registrarParlamentar(Parlamentar parlamentar, Instant agora) {
+        Optional<ParlamentarColetado> existente = parlamentares.findByFonteAndIdExterno(parlamentar.fonte(), parlamentar.id());
+        existente.ifPresent(p -> p.atualizar(parlamentar, agora));
+        return existente.orElseGet(() -> parlamentares.save(new ParlamentarColetado(parlamentar, agora))).id();
     }
 
     @Transactional

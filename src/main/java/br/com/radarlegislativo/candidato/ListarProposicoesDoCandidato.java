@@ -1,42 +1,42 @@
 package br.com.radarlegislativo.candidato;
 
 import br.com.radarlegislativo.UseCase;
-import br.com.radarlegislativo.fonte.ListarProposicoesDoParlamentar;
-import br.com.radarlegislativo.fonte.Proposicao;
 import br.com.radarlegislativo.log.AppLog;
+import br.com.radarlegislativo.proposicao.FeedDeProposicoes;
+import br.com.radarlegislativo.proposicao.FiltroProposicoes;
+import br.com.radarlegislativo.proposicao.ListarProposicoes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
-/** Projetos de todos os vínculos de maior confiança do candidato. */
+/** Projetos coletados de autoria do candidato, pelos vínculos válidos ({@link Vinculo#validos}). */
 @UseCase
 public class ListarProposicoesDoCandidato {
 
     private static final Logger log = LoggerFactory.getLogger(ListarProposicoesDoCandidato.class);
 
     private final BuscarVinculosDoCandidato buscarVinculosDoCandidato;
-    private final ListarProposicoesDoParlamentar listarProposicoesDoParlamentar;
+    private final ListarProposicoes listarProposicoes;
 
     public ListarProposicoesDoCandidato(BuscarVinculosDoCandidato buscarVinculosDoCandidato,
-                                        ListarProposicoesDoParlamentar listarProposicoesDoParlamentar) {
+                                        ListarProposicoes listarProposicoes) {
         this.buscarVinculosDoCandidato = buscarVinculosDoCandidato;
-        this.listarProposicoesDoParlamentar = listarProposicoesDoParlamentar;
+        this.listarProposicoes = listarProposicoes;
     }
 
-    public List<Proposicao> execute(String sq, Integer ano) {
-        return execute(buscarVinculosDoCandidato.execute(sq), ano);
+    public FeedDeProposicoes execute(String sq, LocalDate desde, LocalDate ate, Pageable pageable) {
+        return execute(buscarVinculosDoCandidato.execute(sq), desde, ate, pageable);
     }
 
-    /** Variante para quem já buscou os vínculos (evita refazer o casamento por nome). */
-    public List<Proposicao> execute(List<Vinculo> vinculos, Integer ano) {
-        List<Vinculo> melhores = Vinculo.maisConfiaveis(vinculos);
-        AppLog.logger(log).system().does("listar proposições do candidato").on("vinculos=" + melhores.size() + " ano=" + ano).debug();
-        List<Proposicao> result = melhores.stream()
-                .flatMap(v -> listarProposicoesDoParlamentar.execute(v.parlamentar().fonte(), v.parlamentar().id(), ano).stream())
-                .distinct()
-                .toList();
-        AppLog.logger(log).system().does("listar proposições do candidato").on("vinculos=" + melhores.size() + " total=" + result.size()).info();
-        return result;
+    /** Variante para quem já buscou os vínculos. */
+    public FeedDeProposicoes execute(List<Vinculo> vinculos, LocalDate desde, LocalDate ate, Pageable pageable) {
+        List<Long> parlamentares = Vinculo.validos(vinculos).stream().map(v -> v.parlamentar().id()).distinct().toList();
+        AppLog.logger(log).system().does("listar proposições do candidato").on("parlamentares=" + parlamentares).debug();
+        if (parlamentares.isEmpty()) return FeedDeProposicoes.vazio(pageable);
+        return listarProposicoes.execute(
+                new FiltroProposicoes(desde, ate, null, null, null, null, null, null, parlamentares), pageable);
     }
 }

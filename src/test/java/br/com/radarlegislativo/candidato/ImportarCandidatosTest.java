@@ -32,12 +32,14 @@ class ImportarCandidatosTest {
     private ImportadorTse importador;
     @Mock
     private CandidatoRepository candidatoRepository;
+    @Mock
+    private VincularParlamentares vincularParlamentares;
 
     private ImportarCandidatos importarCandidatos;
 
     @BeforeEach
     void setUp() {
-        importarCandidatos = new ImportarCandidatos(importador, candidatoRepository, props(diretorio.toString()));
+        importarCandidatos = new ImportarCandidatos(importador, candidatoRepository, vincularParlamentares, props(diretorio.toString()));
     }
 
     @Test
@@ -50,6 +52,7 @@ class ImportarCandidatosTest {
 
         assertThat(total).isEqualTo(1);
         verify(candidatoRepository).substituirAno(2026, candidatos);
+        verify(vincularParlamentares).executeTodos();
     }
 
     @Test

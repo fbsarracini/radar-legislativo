@@ -20,11 +20,14 @@ public class ImportarCandidatos {
 
     private final ImportadorTse importador;
     private final CandidatoRepository candidatoRepository;
+    private final VincularParlamentares vincularParlamentares;
     private final Path diretorioDados;
 
-    public ImportarCandidatos(ImportadorTse importador, CandidatoRepository candidatoRepository, RadarProperties props) {
+    public ImportarCandidatos(ImportadorTse importador, CandidatoRepository candidatoRepository,
+                              VincularParlamentares vincularParlamentares, RadarProperties props) {
         this.importador = importador;
         this.candidatoRepository = candidatoRepository;
+        this.vincularParlamentares = vincularParlamentares;
         this.diretorioDados = Path.of(props.tse().diretorioCache()).toAbsolutePath().normalize();
     }
 
@@ -35,6 +38,8 @@ public class ImportarCandidatos {
                 ? importador.importar(ano)
                 : importador.importarArquivo(dentroDoDiretorioDeDados(dados.arquivo()), ano);
         candidatoRepository.substituirAno(ano, candidatos);
+        // Candidatos novos podem casar com parlamentares já coletados (e os que saíram levaram os vínculos junto).
+        vincularParlamentares.executeTodos();
         AppLog.logger(log).system().does("importar candidatos").on("ano=" + ano + " total=" + candidatos.size()).info();
         return candidatos.size();
     }

@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * Critérios opcionais do feed; campo nulo ou vazio não filtra.
- * {@code uf}, {@code partido}, {@code autor} e {@code parlamentar} valem para o mesmo autor:
+ * {@code uf}, {@code partido}, {@code autor} e {@code parlamentares} valem para o mesmo autor:
  * "partido=PT&uf=SP" é "tem um autor do PT de SP", não "um do PT e outro de SP".
  *
  * @param desde       data de apresentação mínima (inclusive)
@@ -24,14 +24,15 @@ import java.util.List;
  * @param novasDesde  só o que a coleta viu pela primeira vez a partir deste instante
  * @param tipos       siglas (PL, PEC...)
  * @param autor       trecho do nome do autor, sem diferenciar acento
- * @param parlamentar id interno do parlamentar autor
+ * @param parlamentares ids internos dos parlamentares; basta um deles ser autor
  */
 public record FiltroProposicoes(LocalDate desde, LocalDate ate, Instant novasDesde, String fonte, List<String> tipos,
-                                String uf, String partido, String autor, Long parlamentar) {
+                                String uf, String partido, String autor, List<Long> parlamentares) {
 
     public FiltroProposicoes {
         Assert.isTrue(desde == null || ate == null || !desde.isAfter(ate), "'desde' deve ser antes de 'ate'");
         tipos = tipos == null ? List.of() : tipos.stream().filter(t -> !t.isBlank()).map(t -> t.trim().toUpperCase()).toList();
+        parlamentares = parlamentares == null ? List.of() : List.copyOf(parlamentares);
     }
 
     public Specification<ProposicaoColetada> especificacao() {
@@ -50,7 +51,7 @@ public record FiltroProposicoes(LocalDate desde, LocalDate ate, Instant novasDes
                 doAutor.add(cb.equal(a.get("proposicao"), root));
                 if (!vazio(uf)) doAutor.add(cb.equal(p.get("uf"), uf.toUpperCase()));
                 if (!vazio(partido)) doAutor.add(cb.equal(cb.upper(p.get("partido")), partido.trim().toUpperCase()));
-                if (parlamentar != null) doAutor.add(cb.equal(p.get("id"), parlamentar));
+                if (!parlamentares.isEmpty()) doAutor.add(p.get("id").in(parlamentares));
                 // O termo normalizado só tem [A-Z0-9 ], então não carrega curingas do LIKE.
                 if (!vazio(autor)) doAutor.add(cb.like(a.get("nomeBusca"), "%" + Nomes.normalizar(autor) + "%"));
                 autoria.select(a.get("id")).where(doAutor.toArray(Predicate[]::new));
@@ -61,7 +62,7 @@ public record FiltroProposicoes(LocalDate desde, LocalDate ate, Instant novasDes
     }
 
     private boolean filtraAutor() {
-        return !vazio(uf) || !vazio(partido) || !vazio(autor) || parlamentar != null;
+        return !vazio(uf) || !vazio(partido) || !vazio(autor) || !parlamentares.isEmpty();
     }
 
     private static boolean vazio(String termo) {

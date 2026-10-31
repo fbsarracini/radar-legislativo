@@ -23,9 +23,13 @@ make test             # os testes de banco usam Testcontainers e são pulados se
 2. Consulte:
    ```bash
    curl "localhost:8080/api/candidatos?ano=2026&uf=SP&cargo=deputado%20federal&nome=silva&eleito=true&pagina=0&tamanho=20"
-   curl "localhost:8080/api/candidatos/{sqCandidato}"               # perfil + vínculos + projetos
-   curl "localhost:8080/api/candidatos/{sqCandidato}/vinculos"
-   curl "localhost:8080/api/candidatos/{sqCandidato}/proposicoes?ano=2025"
+   curl "localhost:8080/api/candidatos/{sqCandidato}"               # perfil + vínculos + 20 projetos mais recentes
+   curl "localhost:8080/api/candidatos/{sqCandidato}/vinculos"      # sugeridos, confirmados e rejeitados
+   curl "localhost:8080/api/candidatos/{sqCandidato}/proposicoes?desde=2026-01-01&pagina=0"
+   # homônimo? confirme ou rejeite; o recálculo automático nunca desfaz a decisão
+   curl -X PUT localhost:8080/api/candidatos/{sqCandidato}/vinculos/{id}/confirmacao \
+        -H 'Content-Type: application/json' -d '{"confirmado":true}'
+   curl -X POST localhost:8080/api/admin/vinculos/recalcular
    ```
 3. Ou vá direto às casas, sem passar pelo TSE:
    ```bash
@@ -46,6 +50,7 @@ make test             # os testes de banco usam Testcontainers e são pulados se
    curl "localhost:8080/api/proposicoes/{id}"                                       # detalhe + autores
    ```
    `uf`, `partido`, `autor` e `parlamentar` valem para o mesmo autor: `partido=PT&uf=SP` = "um autor do PT de SP".
+   Cada autor traz `candidaturas`: o selo do TSE (ano, cargo, eleito, confiança, status do vínculo).
 
 Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso não encontrado","errors":[]}`.
 400 = parâmetro inválido, 404 = candidato/fonte inexistente, 422 = regra de domínio, 502 = API pública fora do ar.
@@ -64,13 +69,14 @@ Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso n
 - **Não existe API nacional para assembleias e câmaras municipais.** O SAPL cobre muitas casas, mas não todas (ex.: ALESP e a Câmara de São Paulo têm portais próprios). Para essas, crie uma nova implementação de `FonteLegislativa`.
 - **Eleitos de 2026 tomam posse em 1º/02/2027.** Até lá, só os **reeleitos** (ou quem já teve outro mandato) têm projetos. Por isso a Câmara é consultada nas legislaturas 57 e 58.
 - **Cargos executivos** (presidente, governador, prefeito) não aparecem como autores parlamentares; o vínculo devolve lista vazia.
-- **O casamento TSE ↔ casa é por nome + UF**, com grau de confiança (`NOME_URNA_EXATO`, `NOME_CIVIL_EXATO`, `NOME_PARCIAL`). Homônimos acontecem: mostre a confiança na tela e permita confirmação manual.
+- **O casamento TSE ↔ casa é por nome + UF + cargo**, feito no banco entre os parlamentares coletados e os candidatos importados, com grau de confiança (`NOME_URNA_EXATO`, `NOME_CIVIL_EXATO`, `NOME_PARCIAL`). Por eleição, só o grau mais alto encontrado vira sugestão; parcial com mais de 3 candidatos é descartado como ambíguo. Roda quando a coleta grava um parlamentar novo e depois de cada importação. Homônimos acontecem: mostre a confiança e o status na tela e use a confirmação manual.
+- **Perfil do candidato só tem o que foi coletado:** projetos anteriores à primeira coleta (`dias-iniciais`) e casas sem coleta (Senado, SAPL) não aparecem. Para histórico, aumente `dias-iniciais` antes da primeira coleta. Parlamentar que não protocolou nada na janela coletada não tem vínculo.
 - **Senado:** o serviço antigo `/senador/{codigo}/autorias` foi descontinuado e substituído por `/processo`. Confira o nome do parâmetro de autoria no Swagger do Senado e ajuste `radar.senado.parametro-autor` se necessário.
 - **Câmara:** sem filtro de data, `/proposicoes` devolve só os últimos 30 dias — o cliente já trata isso.
 - **Volume:** ano municipal tem ~450 mil candidatos. A importação grava em lote (upsert JDBC) numa transação, mas ainda é síncrona e carrega o arquivo inteiro em memória.
 - **Coleta:** só a Câmara implementa `FonteComColeta` por enquanto, e só os tipos de `radar.camara.tipos` (PL, PLP, PEC, PDL). A primeira coleta volta `dias-iniciais` dias; as seguintes recomeçam um dia antes do fim da última com SUCESSO, então uma falha não deixa buraco. Partido/UF do autor é o do momento em que ele apareceu pela primeira vez.
 - O lock da coleta é por instância; rodando mais de uma instância, troque por lock no banco (ex.: ShedLock).
-- Vínculos candidato ↔ parlamentar e as proposições do perfil ainda são consultados nas casas a cada request (cache de 6h). Próximo passo: gravar os vínculos e mostrar no feed quando o autor é candidato/eleito do TSE.
+- `/api/parlamentares` e `/api/fontes/{fonte}/parlamentares/{id}/proposicoes` continuam consultando as casas ao vivo (cache de 6h), úteis para histórico fora da janela coletada.
 
 ## Design de código
 
@@ -92,11 +98,11 @@ br.com.radarlegislativo
 │               ListarFontes, BuscarParlamentares (cache), ListarProposicoesDoParlamentar (cache)
 │               + *Controller e *Response de cada um
 ├── candidato/  candidatos do TSE e o cruzamento com as casas
-│               Candidato (@Entity), Vinculo, FiltroCandidatos (Specification), PerfilDoCandidato
+│               Candidato, Vinculo (@Entity), Casamento, FiltroCandidatos (Specification), PerfilDoCandidato
 │               CandidatoRepository (JPA) + SubstituicaoDeCandidatos (upsert em lote)
 │               ImportadorTse, CsvTse
-│               ImportarCandidatos, ListarCandidatos, BuscarVinculosDoCandidato,
-│               ListarProposicoesDoCandidato, ConsultarPerfilDoCandidato
+│               ImportarCandidatos, ListarCandidatos, BuscarVinculosDoCandidato, VincularParlamentares,
+│               DecidirVinculo, ListarProposicoesDoCandidato, ConsultarPerfilDoCandidato
 │               + *Controller, *Request/*Data e *Response
 ├── proposicao/ coleta agendada do que é protocolado nas casas
 │               ProposicaoColetada, Autoria, ParlamentarColetado, Coleta (@Entity) + repositórios

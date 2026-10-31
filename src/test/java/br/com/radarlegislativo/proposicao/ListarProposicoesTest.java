@@ -1,5 +1,6 @@
 package br.com.radarlegislativo.proposicao;
 
+import br.com.radarlegislativo.candidato.VinculoRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,7 +8,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +29,8 @@ class ListarProposicoesTest {
 
     @Mock
     private ProposicaoColetadaRepository proposicaoRepository;
+    @Mock
+    private VinculoRepository vinculoRepository;
 
     @InjectMocks
     private ListarProposicoes listarProposicoes;
@@ -39,13 +41,14 @@ class ListarProposicoesTest {
         when(proposicaoRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenAnswer(inv -> new PageImpl<ProposicaoColetada>(List.of(), inv.getArgument(1), 0));
 
-        Page<ProposicaoColetada> result = listarProposicoes.execute(SEM_FILTRO, PageRequest.of(2, 15, Sort.by("ementa")));
+        FeedDeProposicoes result = listarProposicoes.execute(SEM_FILTRO, PageRequest.of(2, 15, Sort.by("ementa")));
 
         ArgumentCaptor<Pageable> pagina = ArgumentCaptor.forClass(Pageable.class);
         verify(proposicaoRepository).findAll(any(Specification.class), pagina.capture());
         assertThat(pagina.getValue().getPageNumber()).isEqualTo(2);
         assertThat(pagina.getValue().getPageSize()).isEqualTo(15);
         assertThat(pagina.getValue().getSort().isUnsorted()).isTrue();
-        assertThat(result).isEmpty();
+        assertThat(result.pagina()).isEmpty();
+        assertThat(result.candidaturas().porParlamentar()).isEmpty();
     }
 }

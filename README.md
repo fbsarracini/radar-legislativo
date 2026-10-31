@@ -4,14 +4,39 @@ Backend em Java 21 + Spring Boot 3.5 que cruza os **candidatos do TSE** com os *
 
 ## Como rodar
 
-Precisa de Docker (para o PostgreSQL) e Java 21.
+Precisa de **Docker** (para o PostgreSQL), **Java 21** e **Node.js + npm** (para o front).
 
+**1. Configuração (só na primeira vez)**
 ```bash
 cp .env.sample .env   # defina DB_PASSWORD
-make run              # sobe o Postgres (docker compose) e a app; ou: make db && ./mvnw spring-boot:run
-make test             # os testes de banco usam Testcontainers e são pulados se não houver Docker
-# Swagger: http://localhost:8080/swagger-ui.html  ·  Health: /actuator/health
 ```
+
+**2. Terminal 1 — backend** (sobe o Postgres via docker compose e a app em `:8080`; o terminal fica preso)
+```bash
+make run              # ou: make db && ./mvnw spring-boot:run
+# Health: http://localhost:8080/actuator/health  ·  Swagger: http://localhost:8080/swagger-ui.html
+```
+
+**3. Terminal 2 — frontend** (instala o `node_modules` se faltar e roda o `ng serve`; `/api` vai por proxy para `:8080`)
+```bash
+make web              # http://localhost:4200
+```
+
+**4. Popule o banco** — ele começa vazio, e o front não mostra nada até você importar ou coletar:
+```bash
+curl -X POST localhost:8080/api/admin/tse/importar -H 'Content-Type: application/json' -d '{"ano":2026}'
+curl -X POST localhost:8080/api/admin/coletas/camara
+curl -X POST localhost:8080/api/admin/coletas/senado
+```
+
+**5. Para parar:** `Ctrl+C` nos dois terminais e depois `make db-down` (os dados do banco ficam guardados).
+
+Testes: `make test` (backend; os testes de banco usam Testcontainers e são pulados se não houver Docker) e `make web-test` (front, Vitest).
+
+Telas do front: **Feed** (filtros na URL, marca o que chegou desde a última visita), **detalhe da proposição**,
+**busca de candidatos** e **perfil do candidato**, onde se confirma ou rejeita o vínculo com o parlamentar.
+
+## API — referência
 
 1. Importe os candidatos de um ano — todos, eleitos ou não; o campo `eleito` diz quem ganhou (baixa ~centenas de MB do TSE na primeira vez e guarda em `./dados/tse`):
    ```bash
@@ -51,14 +76,6 @@ make test             # os testes de banco usam Testcontainers e são pulados se
    ```
    `uf`, `partido`, `autor` e `parlamentar` valem para o mesmo autor: `partido=PT&uf=SP` = "um autor do PT de SP".
    Cada autor traz `candidaturas`: o selo do TSE (ano, cargo, eleito, confiança, status do vínculo).
-
-6. Ou abra o front (Angular), com o backend rodando:
-   ```bash
-   make web        # http://localhost:4200 — o ng serve manda /api para localhost:8080
-   make web-test   # testes do front (Vitest)
-   ```
-   Telas: **Feed** (filtros na URL, marca o que chegou desde a última visita), **detalhe da proposição**,
-   **busca de candidatos** e **perfil do candidato**, onde se confirma ou rejeita o vínculo com o parlamentar.
 
 Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso não encontrado","errors":[]}`.
 400 = parâmetro inválido, 404 = candidato/fonte inexistente, 422 = regra de domínio, 502 = API pública fora do ar.

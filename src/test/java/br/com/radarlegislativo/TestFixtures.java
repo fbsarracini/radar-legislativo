@@ -1,7 +1,7 @@
 package br.com.radarlegislativo;
 
 import br.com.radarlegislativo.config.RadarProperties;
-import br.com.radarlegislativo.eleito.CandidatoEleito;
+import br.com.radarlegislativo.candidato.Candidato;
 import br.com.radarlegislativo.fonte.Esfera;
 import br.com.radarlegislativo.fonte.Parlamentar;
 import br.com.radarlegislativo.fonte.Proposicao;
@@ -23,12 +23,16 @@ public final class TestFixtures {
                 new RadarProperties.Tse("https://tse.test/consulta_cand_{ano}.zip", diretorioTse));
     }
 
-    public static CandidatoEleito deputadoFederal(String sq, String nome, String urna) {
-        return new CandidatoEleito(sq, 2026, nome, urna, "DEPUTADO FEDERAL", "SP", "SÃO PAULO", "XYZ", "4010", "ELEITO");
+    public static Candidato deputadoFederal(String sq, String nome, String urna) {
+        return new Candidato(sq, 2026, nome, urna, "DEPUTADO FEDERAL", "SP", "SÃO PAULO", "XYZ", "4010", "ELEITO");
     }
 
-    public static CandidatoEleito eleito(String sq, int ano, String cargo, String uf, String urna) {
-        return new CandidatoEleito(sq, ano, urna, urna, cargo, uf, null, "XYZ", "10", "ELEITO");
+    public static Candidato eleito(String sq, int ano, String cargo, String uf, String urna) {
+        return candidato(sq, ano, cargo, uf, urna, "ELEITO");
+    }
+
+    public static Candidato candidato(String sq, int ano, String cargo, String uf, String urna, String situacao) {
+        return new Candidato(sq, ano, urna, urna, cargo, uf, null, "XYZ", "10", situacao);
     }
 
     public static Parlamentar deputado(String id, String nome) {

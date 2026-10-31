@@ -1,16 +1,19 @@
 # Radar Legislativo
 
-Backend em Java 21 + Spring Boot 3.5 que cruza os **eleitos do TSE** com os **projetos que eles protocolaram** nas casas legislativas, usando só dados abertos oficiais.
+Backend em Java 21 + Spring Boot 3.5 que cruza os **candidatos do TSE** com os **projetos protocolados** nas casas legislativas, usando só dados abertos oficiais. Dados em PostgreSQL (Flyway).
 
 ## Como rodar
 
+Precisa de Docker (para o PostgreSQL) e Java 21.
+
 ```bash
-make run        # ou ./mvnw spring-boot:run
-make test
+cp .env.sample .env   # defina DB_PASSWORD
+make run              # sobe o Postgres (docker compose) e a app; ou: make db && ./mvnw spring-boot:run
+make test             # os testes de banco usam Testcontainers e são pulados se não houver Docker
 # Swagger: http://localhost:8080/swagger-ui.html  ·  Health: /actuator/health
 ```
 
-1. Importe os eleitos de um ano (baixa ~centenas de MB do TSE na primeira vez e guarda em `./dados/tse`):
+1. Importe os candidatos de um ano — todos, eleitos ou não; o campo `eleito` diz quem ganhou (baixa ~centenas de MB do TSE na primeira vez e guarda em `./dados/tse`):
    ```bash
    curl -X POST localhost:8080/api/admin/tse/importar -H 'Content-Type: application/json' -d '{"ano":2026}'
    # ou, com o zip já baixado em ./dados/tse (o caminho é relativo a radar.tse.diretorio-cache):
@@ -19,10 +22,10 @@ make test
    ```
 2. Consulte:
    ```bash
-   curl "localhost:8080/api/eleitos?ano=2026&uf=SP&cargo=deputado%20federal&nome=silva&pagina=0&tamanho=20"
-   curl "localhost:8080/api/eleitos/{sqCandidato}"               # perfil + vínculos + projetos
-   curl "localhost:8080/api/eleitos/{sqCandidato}/vinculos"
-   curl "localhost:8080/api/eleitos/{sqCandidato}/proposicoes?ano=2025"
+   curl "localhost:8080/api/candidatos?ano=2026&uf=SP&cargo=deputado%20federal&nome=silva&eleito=true&pagina=0&tamanho=20"
+   curl "localhost:8080/api/candidatos/{sqCandidato}"               # perfil + vínculos + projetos
+   curl "localhost:8080/api/candidatos/{sqCandidato}/vinculos"
+   curl "localhost:8080/api/candidatos/{sqCandidato}/proposicoes?ano=2025"
    ```
 3. Ou vá direto às casas, sem passar pelo TSE:
    ```bash
@@ -32,13 +35,13 @@ make test
    ```
 
 Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso não encontrado","errors":[]}`.
-400 = parâmetro inválido, 404 = eleito/fonte inexistente, 422 = regra de domínio, 502 = API pública fora do ar.
+400 = parâmetro inválido, 404 = candidato/fonte inexistente, 422 = regra de domínio, 502 = API pública fora do ar.
 
 ## Fontes de dados
 
 | Esfera | Fonte | O que usamos |
 |---|---|---|
-| Eleitos (todas) | Portal de Dados Abertos do TSE — `consulta_cand_{ano}.zip` | CSV `;` Latin-1; filtro `DS_SIT_TOT_TURNO` começando com `ELEITO` |
+| Candidatos (todas) | Portal de Dados Abertos do TSE — `consulta_cand_{ano}.zip` | CSV `;` Latin-1; `eleito` = `DS_SIT_TOT_TURNO` começando com `ELEITO` |
 | Federal — Câmara | `https://dadosabertos.camara.leg.br/api/v2` | `/deputados?nome&siglaUf&idLegislatura`, `/proposicoes?idDeputadoAutor&ano` |
 | Federal — Senado | `https://legis.senado.leg.br/dadosabertos` | `/senador/lista/atual`, `/senador/lista/legislatura/{n}`, `/processo` |
 | Estadual / Municipal | SAPL (Interlegis), uma instância por casa | `/api/base/autor/`, `/api/materia/materialegislativa/?autores=` |
@@ -51,7 +54,8 @@ Erros seguem um formato único (`ApiError`): `{"status":404,"message":"recurso n
 - **O casamento TSE ↔ casa é por nome + UF**, com grau de confiança (`NOME_URNA_EXATO`, `NOME_CIVIL_EXATO`, `NOME_PARCIAL`). Homônimos acontecem: mostre a confiança na tela e permita confirmação manual.
 - **Senado:** o serviço antigo `/senador/{codigo}/autorias` foi descontinuado e substituído por `/processo`. Confira o nome do parâmetro de autoria no Swagger do Senado e ajuste `radar.senado.parametro-autor` se necessário.
 - **Câmara:** sem filtro de data, `/proposicoes` devolve só os últimos 30 dias — o cliente já trata isso.
-- Os eleitos ficam em memória. Próximo passo natural: PostgreSQL + Spring Data JPA, gravando eleitos, vínculos confirmados e proposições (com atualização agendada via `@Scheduled`).
+- **Volume:** ano municipal tem ~450 mil candidatos. A importação grava em lote (upsert JDBC) numa transação, mas ainda é síncrona e carrega o arquivo inteiro em memória.
+- Vínculos e proposições ainda são consultados nas casas a cada request (com cache de 6h). Próximo passo: coleta agendada das proposições para o banco e o feed `/api/proposicoes`.
 
 ## Design de código
 
@@ -72,11 +76,12 @@ br.com.radarlegislativo
 │               CamaraClient, SenadoClient, SaplClient, Json
 │               ListarFontes, BuscarParlamentares (cache), ListarProposicoesDoParlamentar (cache)
 │               + *Controller e *Response de cada um
-├── eleito/     eleitos do TSE e o cruzamento com as casas
-│               CandidatoEleito, Vinculo, FiltroEleitos, PerfilDoEleito, EleitoRepository (memória)
+├── candidato/  candidatos do TSE e o cruzamento com as casas
+│               Candidato (@Entity), Vinculo, FiltroCandidatos (Specification), PerfilDoCandidato
+│               CandidatoRepository (JPA) + SubstituicaoDeCandidatos (upsert em lote)
 │               ImportadorTse, CsvTse
-│               ImportarEleitos, ListarEleitos, BuscarVinculosDoEleito,
-│               ListarProposicoesDoEleito, ConsultarPerfilDoEleito
+│               ImportarCandidatos, ListarCandidatos, BuscarVinculosDoCandidato,
+│               ListarProposicoesDoCandidato, ConsultarPerfilDoCandidato
 │               + *Controller, *Request/*Data e *Response
 ├── config/     RadarProperties (validado no boot), HttpConfig, CacheConfig, CorsConfig, OpenApiConfig
 ├── exception/  ApiError, GlobalExceptionHandler, NotFoundException, FonteIndisponivelException

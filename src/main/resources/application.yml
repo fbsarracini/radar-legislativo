@@ -4,6 +4,15 @@ server:
 spring:
   application:
     name: radar-legislativo
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/radar}
+    username: ${DB_USERNAME:radar}
+    # Sem default: a app falha no boot se DB_PASSWORD não estiver definido (fail-fast). Ver .env.sample.
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
   data:
     web:
       pageable:

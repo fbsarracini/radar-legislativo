@@ -1,5 +1,9 @@
 .DEFAULT_GOAL := help
-.PHONY: help build run test clean swagger
+.PHONY: help build run test clean swagger db db-down
+
+# Variáveis do .env (DB_PASSWORD etc.) viram variáveis de ambiente da app.
+-include .env
+export
 
 MVN := ./mvnw
 
@@ -9,10 +13,16 @@ help: ## Lista os comandos disponíveis
 build: ## Compila o projeto (sem testes)
 	$(MVN) -DskipTests package
 
-test: ## Roda a suíte de testes
+test: ## Roda a suíte de testes (os de banco precisam de Docker; sem ele são pulados)
 	$(MVN) test
 
-run: ## Roda a app local (Spring Boot)
+db: ## Sobe o PostgreSQL (docker compose)
+	docker compose up -d db
+
+db-down: ## Derruba o PostgreSQL (mantém os dados)
+	docker compose down
+
+run: db ## Roda a app local (sobe o banco antes)
 	$(MVN) spring-boot:run
 
 clean: ## Limpa artefatos de build

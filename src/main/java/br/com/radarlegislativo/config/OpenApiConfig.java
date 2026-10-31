@@ -13,7 +13,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Radar Legislativo")
-                        .description("Projetos protocolados por candidatos eleitos, a partir das APIs públicas (Câmara, Senado, SAPL) e dados do TSE")
+                        .description("Projetos protocolados nas casas legislativas, cruzados com os candidatos do TSE, a partir das APIs públicas (Câmara, Senado, SAPL) e dados do TSE")
                         .version("v1"));
     }
 }

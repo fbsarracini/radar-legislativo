@@ -14,6 +14,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import org.hibernate.Hibernate;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.util.Assert;
 
 import java.time.Instant;
@@ -69,8 +71,10 @@ public class ProposicaoColetada {
     @Column(name = "atualizado_em", nullable = false)
     private Instant atualizadoEm;
 
+    // Lote: o feed carrega os autores da página inteira em poucas queries, sem N+1.
     @OneToMany(mappedBy = "proposicao", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("ordem")
+    @BatchSize(size = 100)
     private List<Autoria> autores = new ArrayList<>();
 
     @Deprecated
@@ -107,6 +111,19 @@ public class ProposicaoColetada {
         this.dataApresentacao = proposicao.dataApresentacao();
         this.url = proposicao.url();
         this.atualizadoEm = agora;
+    }
+
+    /** Ex.: "PL 1234/2025" — mesmo formato de {@link Proposicao#identificacao()}. */
+    public String identificacao() {
+        if (sigla == null) {
+            return null;
+        }
+        return sigla + (numero != null ? " " + numero : "") + (ano != null ? "/" + ano : "");
+    }
+
+    /** Inicializa autores e parlamentares (em lote) para uso fora da transação. */
+    void carregarAutores() {
+        autores.forEach(a -> Hibernate.initialize(a.parlamentar()));
     }
 
     public Long id() { return id; }

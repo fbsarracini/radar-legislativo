@@ -1,6 +1,7 @@
 package br.com.radarlegislativo.proposicao;
 
 import br.com.radarlegislativo.fonte.Autor;
+import br.com.radarlegislativo.fonte.Nomes;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -31,6 +32,10 @@ public class Autoria {
     @Column(name = "nome")
     private String nome;
 
+    /** {@link Nomes#normalizar} do nome, para o filtro "autor" do feed. */
+    @Column(name = "nome_busca", nullable = false)
+    private String nomeBusca;
+
     @Column(name = "tipo")
     private String tipo;
 
@@ -53,6 +58,7 @@ public class Autoria {
         this.proposicao = proposicao;
         this.ordem = ordem;
         this.nome = autor.nome();
+        this.nomeBusca = Nomes.normalizar(autor.nome());
         this.tipo = autor.tipo();
         this.proponente = autor.proponente();
         this.parlamentar = parlamentar;

@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.util.Assert;
 
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.time.Instant;
 /** Parlamentar que apareceu como autor numa coleta, com o id que a própria casa usa. */
 @Entity
 @Table(name = "parlamentar")
+@BatchSize(size = 100)
 public class ParlamentarColetado {
 
     @Id
